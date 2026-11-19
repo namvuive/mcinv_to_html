@@ -70,6 +70,9 @@ gradle.properties / build.gradle / settings.gradle / gradle wrapper
       syntax highlighting, selection + Ctrl+C, Copy all, toast
 - [x] `gradlew build` passes
 - [x] Client launches with mixins applied (`gradlew runClient` reaches main menu, no crash)
+- [x] Fix: browser freeze on item click caused by infinite loop in `highlightSnbt`
+      (typed-array `[` branch missing index advance). Rewrote highlighter as a
+      single-pass regex tokenizer; added 150KB plain-text render guard.
 - [ ] Manual in-game verification: export from each container type + open HTML in browser
 
 ## Verification plan

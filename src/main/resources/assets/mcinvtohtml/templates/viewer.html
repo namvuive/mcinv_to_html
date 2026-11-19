@@ -166,6 +166,14 @@ header.topbar {
 .tab:hover { color: var(--text); }
 .tab.active { color: #fff; background: var(--panel-2); border-color: var(--border); }
 .code-wrap { position: relative; }
+.code-note {
+  padding: 8px 18px;
+  background: #2a2416;
+  border-top: 1px solid #4a3d1c;
+  color: #e6c98a;
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
 pre.code {
   margin: 0;
   padding: 16px 18px 22px;
@@ -182,6 +190,7 @@ pre.code {
   white-space: pre;
 }
 pre.code::selection, pre.code *::selection { background: #264f78; }
+pre.code.plain { color: #cfcfd8; }
 /* VS Code Dark+ style token colors */
 .tok-key { color: #9cdcfe; }
 .tok-string { color: #ce9178; }
@@ -416,125 +425,62 @@ function moveTooltip(evt) {
 function hideTooltip() { tooltip.style.display = 'none'; currentTooltipItem = null; }
 
 /* ---------------- syntax highlighting ---------------- */
-/* Highlights SNBT-like text: keys, strings, numbers, booleans, punctuation. */
+/*
+ * Single-pass regex tokenizer. One combined alternation means the JS regex
+ * engine (compiled C++) scans the text linearly in one call per token; there
+ * is no hand-written index loop that can fail to advance or go quadratic.
+ *
+ * Groups:
+ *   1: #line comment
+ *   2: quoted string (single or double, escapes supported)
+ *   3: type prefix   byte[ / int[ / long[ / short[ / float[ / double[ / List[
+ *   4: literal       true / false / null
+ *   5: number        -1 / 2.5 / 1e5 / 12b / 3.0f / 7L
+ *   6: punctuation   { } [ ] , : =
+ *   7: identifier    minecraft:foo / custom_data ...
+ */
+const SNBT_TOKEN_RE = /(#.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(byte|short|int|long|float|double|List|Compound|String|ByteArray|IntArray|LongArray)(?=\s*\[)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?[bBsSlLfFdD]?)|(true|false|null)|([{}[\],:=])|([A-Za-z_][A-Za-z0-9_.+\-]*)/g;
+const SNBT_KEY_AHEAD_RE = /^\s*:(?!:)/;
+
 function highlightSnbt(text) {
   let out = '';
-  let i = 0;
+  let last = 0;
   const n = text.length;
-  const isIdentStart = (c) => /[A-Za-z0-9_.+\-]/.test(c);
-  const isIdent = (c) => /[A-Za-z0-9_.+\-]/.test(c);
+  const re = new RegExp(SNBT_TOKEN_RE.source, 'g');
+  let m;
 
-  while (i < n) {
-    const c = text[i];
+  while ((m = re.exec(text)) !== null) {
+    // Copy any untouched span before this token verbatim.
+    if (m.index > last) out += escapeHtml(text.slice(last, m.index));
+    const tok = m[0];
+    let cls;
 
-    // comments
-    if (c === '#') {
-      let j = text.indexOf('\n', i);
-      if (j === -1) j = n;
-      out += `<span class="tok-comment">${escapeHtml(text.slice(i, j))}</span>`;
-      i = j;
-      continue;
+    if (m[1] !== undefined) {
+      cls = 'tok-comment';
+    } else if (m[2] !== undefined) {
+      // A quoted token is a key when a ':' follows it.
+      cls = SNBT_KEY_AHEAD_RE.test(text.slice(re.lastIndex, re.lastIndex + 32)) ? 'tok-key' : 'tok-string';
+    } else if (m[3] !== undefined) {
+      cls = 'tok-type';
+    } else if (m[5] !== undefined) {
+      cls = tok === 'null' ? 'tok-null' : 'tok-bool';
+    } else if (m[4] !== undefined) {
+      cls = 'tok-number';
+    } else if (m[6] !== undefined) {
+      cls = 'tok-punct';
+    } else {
+      // Identifier: key if ':' follows.
+      cls = SNBT_KEY_AHEAD_RE.test(text.slice(re.lastIndex, re.lastIndex + 32)) ? 'tok-key' : 'tok-value';
     }
 
-    // quoted string
-    if (c === '"' || c === "'") {
-      const quote = c;
-      let j = i + 1;
-      while (j < n) {
-        if (text[j] === '\\') { j += 2; continue; }
-        if (text[j] === quote) { j++; break; }
-        j++;
-      }
-      const raw = text.slice(i, j);
-      // Determine if this string is actually a key (followed by ':')
-      let k = j;
-      while (k < n && (text[k] === ' ' || text[k] === '\t')) k++;
-      const isKey = text[k] === ':' && text[k + 1] !== ':';
-      out += `<span class="${isKey ? 'tok-key' : 'tok-string'}">${escapeHtml(raw)}</span>`;
-      i = j;
-      continue;
-    }
+    out += `<span class="${cls}">${escapeHtml(tok)}</span>`;
+    last = re.lastIndex;
 
-    // type prefixes like byte[...] / int[...] / long[...]
-    if (/[A-Za-z]/.test(c)) {
-      let j = i;
-      while (j < n && /[A-Za-z0-9_]/.test(text[j])) j++;
-      let word = text.slice(i, j);
-      // typed array header:  byte[4] { ... }
-      if (text[j] === '[' || /^(byte|short|int|long|float|double)$/.test(word) && text[j] === '[') {
-        let k = j;
-        // consume [ ... ]
-        let depth = 0;
-        let kk = k;
-        if (text[kk] === '[') {
-          while (kk < n) {
-            if (text[kk] === '[') depth++;
-            else if (text[kk] === ']') { depth--; kk++; if (depth === 0) break; }
-            else kk++;
-          }
-        }
-        // typed array head
-        if (/^(byte|short|int|long|float|double|List|Compound|String|ByteArray|IntArray|LongArray)$/.test(word) && text[k] === '[') {
-          out += `<span class="tok-type">${escapeHtml(word)}</span><span class="tok-punct">${escapeHtml(text.slice(k, kk))}</span>`;
-          i = kk;
-          continue;
-        }
-      }
-      // positional index prefix like "0: " from pretty print? handle later
-      let realWord = text.slice(i, j);
-      if (/^\d+[bBsSlLfFdD]$/.test(realWord)) {
-        out += `<span class="tok-number">${escapeHtml(realWord)}</span>`;
-      } else if (/^(true|false)$/.test(realWord)) {
-        out += `<span class="tok-bool">${escapeHtml(realWord)}</span>`;
-      } else if (/^(null)$/i.test(realWord)) {
-        out += `<span class="tok-null">${escapeHtml(realWord)}</span>`;
-      } else if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(realWord)) {
-        out += `<span class="tok-number">${escapeHtml(realWord)}</span>`;
-      } else {
-        // bare identifier: could be a key if followed by ':'
-        let k = j;
-        while (k < n && (text[k] === ' ' || text[k] === '\t')) k++;
-        if (text[k] === ':' && text[k + 1] !== ':') {
-          out += `<span class="tok-key">${escapeHtml(realWord)}</span>`;
-        } else {
-          out += `<span class="tok-value">${escapeHtml(realWord)}</span>`;
-        }
-      }
-      i = j;
-      continue;
-    }
-
-    // number
-    if (/[0-9\-+.]/.test(c)) {
-      let j = i;
-      if (text[j] === '-' || text[j] === '+') j++;
-      while (j < n && /[0-9.eE+\-bBsSlLfFdD]/.test(text[j])) {
-        // allow only numbers/suffixes
-        j++;
-        if (/[bBsSlLfFdD]$/.test(text.slice(i, j))) break;
-      }
-      const raw = text.slice(i, j);
-      if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?[bBsSlLfFdD]?$/.test(raw)) {
-        out += `<span class="tok-number">${escapeHtml(raw)}</span>`;
-        i = j;
-        continue;
-      }
-      // fallthrough single char
-      out += escapeHtml(c);
-      i++;
-      continue;
-    }
-
-    // punctuation / structural
-    if ('{}[],:='.includes(c)) {
-      out += `<span class="tok-punct">${escapeHtml(c)}</span>`;
-      i++;
-      continue;
-    }
-
-    out += escapeHtml(c);
-    i++;
+    // Guard against a zero-length match (should never happen with this regex).
+    if (re.lastIndex === m.index) re.lastIndex++;
   }
+
+  if (last < n) out += escapeHtml(text.slice(last, n));
   return out;
 }
 
@@ -573,12 +519,36 @@ function openModal(opts) {
   modal.classList.add('open');
 }
 
+/* Above this size we skip tokenizing/spans and render plain text. Coloring
+ * a huge NBT would create hundreds of thousands of DOM nodes and lag the tab
+ * (and selection). Copy all still uses the full original text. */
+const HIGHLIGHT_LIMIT = 150000;
+
 function renderModalTab() {
   const tab = modalTabsData[modalActive];
   if (!tab) return;
-  const h = tab.kind === 'json' ? highlightJson(tab.text) : highlightSnbt(tab.text);
-  mCode.innerHTML = h;
   modalTextForCopy = tab.text;
+
+  if (tab.text.length > HIGHLIGHT_LIMIT) {
+    // Plain, uncolored, but still selectable and copyable.
+    mCode.textContent = tab.text;
+    mCode.classList.add('plain');
+    let note = document.getElementById('m-note');
+    if (!note) {
+      note = el('div', 'code-note');
+      note.id = 'm-note';
+      mCode.parentNode.insertBefore(note, mCode);
+    }
+    note.textContent = 'Large data (' + Math.round(tab.text.length / 1024) + ' KB): highlighting disabled for performance. Copy all copies the full text.';
+    note.style.display = '';
+  } else {
+    const h = tab.kind === 'json' ? highlightJson(tab.text) : highlightSnbt(tab.text);
+    mCode.innerHTML = h;
+    mCode.classList.remove('plain');
+    const note = document.getElementById('m-note');
+    if (note) note.style.display = 'none';
+  }
+
   [...mTabs.children].forEach((n, i) => n.classList.toggle('active', i === modalActive));
 }
 
