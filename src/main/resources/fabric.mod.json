@@ -5,7 +5,7 @@
 	"name": "MCInv to HTML",
 	"description": "Exports any container inventory to a self-contained, read-only HTML file with items, tooltips and full item data.",
 	"authors": [
-		"Nam Vuive"
+		"namvuive"
 	],
 	"license": "MIT",
 	"icon": "assets/mcinvtohtml/icon.png",
