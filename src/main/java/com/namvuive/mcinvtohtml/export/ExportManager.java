@@ -144,7 +144,7 @@ public final class ExportManager {
 		try {
 			full.copyRect(cropped, x0, y0, 0, 0, w, h, false, false);
 
-			Path dir = Minecraft.getInstance().gameDirectory.toPath().resolve("mcinv");
+			Path dir = Minecraft.getInstance().gameDirectory.toPath().resolve("mcinvtohtml");
 			Files.createDirectories(dir);
 
 			Path temp = dir.resolve(".capture_" + request.time() + ".png");

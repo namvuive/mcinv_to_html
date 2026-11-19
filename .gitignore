@@ -34,7 +34,7 @@ run/
 
 # mod runtime output
 
-mcinv/
+mcinvtohtml/
 *.log
 
 # java

@@ -7,7 +7,7 @@ package `com.namvuive.mcinvtohtml`).
 
 Adds an **"Export"** button to every container screen (all `AbstractContainerScreen`
 subclasses, excluding the Creative inventory). Clicking it writes a **single self-contained
-HTML file** to `.minecraft/mcinv/` that reproduces the inventory exactly as seen in game:
+HTML file** to `.minecraft/mcinvtohtml/` that reproduces the inventory exactly as seen in game:
 
 - Inventory title (the framed GUI title)
 - Every slot layout + items (count, icons rendered like the game, enchant glint included)
@@ -65,7 +65,7 @@ gradle.properties / build.gradle / settings.gradle / gradle wrapper
 - [x] Data collection: slots + full data components -> SNBT
 - [x] Data collection: tooltip lines (colored segments) computed client-side
 - [x] Item icons + glint captured (screenshot-based panel, pixel exact)
-- [x] HTML writer to `.minecraft/mcinv/` + chat feedback
+- [x] HTML writer to `.minecraft/mcinvtohtml/` + chat feedback
 - [x] HTML viewer: layout replica, hover tooltip, item modal, title modal,
       syntax highlighting, selection + Ctrl+C, Copy all, toast
 - [x] `gradlew build` passes
