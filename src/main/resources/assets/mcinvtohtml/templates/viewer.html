@@ -6,77 +6,51 @@
 <title>MCInv to HTML — Inventory</title>
 <style>
 :root {
-  --bg: #101016;
-  --panel: #16161f;
-  --panel-2: #1b1b26;
-  --border: #2a2a3a;
-  --text: #d8d8e4;
-  --muted: #8a8a9c;
-  --accent: #4fa3ff;
+  --text: #1b1b1b;
+  --muted: #666;
+  --border: #d0d0d0;
   --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  background:
-    radial-gradient(1200px 600px at 50% -20%, #1c2133 0%, transparent 60%),
-    var(--bg);
+  background: #fff;
   color: var(--text);
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 28px 16px 64px;
+  justify-content: center;
+  padding: 24px 16px;
 }
-header.topbar {
-  width: 100%;
-  max-width: 980px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .3px; }
-.brand .dot { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(135deg,#6ee7b7,#4fa3ff); }
-.brand small { color: var(--muted); font-weight: 500; }
-.meta {
-  display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
-  color: var(--muted); font-size: 12px; font-family: var(--mono);
-}
-.meta b { color: var(--text); font-weight: 600; }
-
-.workspace { width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 
 .gui {
   position: relative;
   image-rendering: pixelated;
-  border-radius: 6px;
-  box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04);
   cursor: default;
-  background: #0b0b10;
   line-height: 0;
 }
 .gui img.panel { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .slot {
   position: absolute;
-  border-radius: 2px;
   cursor: pointer;
   background: rgba(255,255,255,0);
-  transition: background .08s ease, box-shadow .08s ease;
 }
 .slot:hover { background: rgba(255,255,255,.28); box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
 .slot.empty { cursor: default; }
 .slot.empty:hover { background: transparent; box-shadow: none; }
 
-.title-hit { position: absolute; cursor: pointer; border-radius: 2px; }
-.title-hit:hover { background: rgba(79,163,255,.22); box-shadow: inset 0 0 0 1px rgba(79,163,255,.5); }
+.title-hit { position: absolute; cursor: pointer; }
+.title-hit:hover { background: rgba(79,163,255,.18); box-shadow: inset 0 0 0 1px rgba(79,163,255,.45); }
 
-.hint { color: var(--muted); font-size: 13px; text-align: center; line-height: 1.6; }
-.hint kbd {
-  font-family: var(--mono); font-size: 11px; background: var(--panel-2);
-  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px;
+.meta {
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
 }
 
 .tooltip {
@@ -92,7 +66,7 @@ header.topbar {
   font-size: 13px;
   line-height: 1.35;
   display: none;
-  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  box-shadow: 0 8px 28px rgba(0,0,0,.35);
   image-rendering: pixelated;
 }
 .tooltip .line { white-space: pre-wrap; word-break: break-word; min-height: 1.35em; }
@@ -104,8 +78,7 @@ header.topbar {
 
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 200;
-  background: rgba(4,4,8,.72);
-  backdrop-filter: blur(3px);
+  background: rgba(255,255,255,.86);
   display: none;
   align-items: flex-start;
   justify-content: center;
@@ -115,29 +88,19 @@ header.topbar {
 .modal-backdrop.open { display: flex; }
 .modal {
   width: min(880px, 100%);
-  background: var(--panel);
+  background: #fff;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 30px 80px rgba(0,0,0,.6);
   overflow: hidden;
-  animation: pop .14s ease-out;
 }
-@keyframes pop { from { transform: translateY(8px) scale(.99); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 12px 16px;
-  background: linear-gradient(180deg, #1e1e2b, #191924);
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
 }
 .modal header .name { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.modal header .icon {
-  width: 32px; height: 32px; border-radius: 6px; flex: 0 0 auto;
-  background: #0d0d14 center/contain no-repeat; border: 1px solid #30304a;
-  image-rendering: pixelated;
-}
 .modal header .titles { min-width: 0; }
 .modal header h2 {
-  margin: 0; font-size: 15px; font-weight: 650; color: #fff;
+  margin: 0; font-size: 15px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .modal header .subtitle {
@@ -146,40 +109,33 @@ header.topbar {
 }
 .modal .tools { display: flex; gap: 8px; flex: 0 0 auto; }
 .btn {
-  font: inherit; font-size: 12px; font-weight: 600;
-  padding: 7px 12px; border-radius: 7px; cursor: pointer;
-  background: #262636; color: var(--text); border: 1px solid #34344a;
-  transition: background .12s, border-color .12s, transform .06s;
+  font: inherit; font-size: 12px; font-weight: 500;
+  padding: 5px 10px; border-radius: 4px; cursor: pointer;
+  background: #fff; color: var(--text); border: 1px solid var(--border);
   white-space: nowrap;
 }
-.btn:hover { background: #30304a; border-color: #45456a; }
-.btn:active { transform: translateY(1px); }
-.btn.primary { background: #1d3a5c; border-color: #2f5d8f; color: #cfe6ff; }
-.btn.primary:hover { background: #24496f; }
-.btn.ghost { background: transparent; }
-.modal .tabs { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--panel); }
+.btn:hover { background: #f2f2f2; }
+.btn.primary { border-color: #999; }
+.modal .tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--border); }
 .tab {
-  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
-  padding: 6px 12px; border-radius: 7px 7px 0 0; color: var(--muted);
+  font: inherit; font-size: 12px; cursor: pointer;
+  padding: 5px 10px; color: var(--muted);
   background: transparent; border: 1px solid transparent; border-bottom: none;
 }
 .tab:hover { color: var(--text); }
-.tab.active { color: #fff; background: var(--panel-2); border-color: var(--border); }
+.tab.active { color: var(--text); background: #fff; border-color: var(--border); }
 .code-wrap { position: relative; }
 .code-note {
-  padding: 8px 18px;
-  background: #2a2416;
-  border-top: 1px solid #4a3d1c;
-  color: #e6c98a;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
   font-family: var(--mono);
   font-size: 11.5px;
 }
 pre.code {
   margin: 0;
-  padding: 16px 18px 22px;
-  background: #12121a;
-  border-top: 1px solid var(--border);
-  color: #d4d4dc;
+  padding: 12px 14px 18px;
+  color: #1b1b1b;
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.55;
@@ -189,62 +145,39 @@ pre.code {
   user-select: text;
   white-space: pre;
 }
-pre.code::selection, pre.code *::selection { background: #264f78; }
-pre.code.plain { color: #cfcfd8; }
-/* VS Code Dark+ style token colors */
-.tok-key { color: #9cdcfe; }
-.tok-string { color: #ce9178; }
-.tok-number { color: #b5cea8; }
-.tok-bool { color: #569cd6; }
-.tok-null { color: #c586c0; }
-.tok-punct { color: #808080; }
-.tok-type { color: #4ec9b0; }
-.tok-comment { color: #6a9955; }
-.tok-sect { color: #c586c0; font-weight: 600; }
-.tok-value { color: #dcdcaa; }
-
-.footer { margin-top: 26px; color: var(--muted); font-size: 12px; font-family: var(--mono); text-align: center; line-height: 1.7; }
-.footer a { color: var(--accent); text-decoration: none; }
+pre.code::selection, pre.code *::selection { background: #cfe3ff; }
+pre.code.plain { color: #333; }
+/* Light-theme token colors */
+.tok-key { color: #0451a5; }
+.tok-string { color: #a31515; }
+.tok-number { color: #098658; }
+.tok-bool { color: #0000ff; }
+.tok-null { color: #af00db; }
+.tok-punct { color: #666; }
+.tok-type { color: #267f99; }
+.tok-comment { color: #008000; }
+.tok-value { color: #795e26; }
 
 .toast {
   position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 16px);
-  background: #1d3a2c; color: #b8f5d0; border: 1px solid #2f6b4c;
-  padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  background: #fff; color: var(--text); border: 1px solid var(--border);
+  padding: 8px 14px; border-radius: 4px; font-size: 13px;
   opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 300;
-  box-shadow: 0 10px 30px rgba(0,0,0,.5);
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (max-width: 640px) {
-  body { padding: 16px 8px 48px; }
-  .meta { font-size: 11px; }
+  body { padding: 16px 8px; }
   .modal-backdrop { padding: 16px 8px; }
 }
 </style>
 </head>
 <body>
-<header class="topbar">
-  <div class="brand">
-    <span class="dot"></span>
-    <span>MCInv to HTML <small>— read-only snapshot</small></span>
-  </div>
-  <div class="meta" id="meta"></div>
-</header>
-
-<div class="workspace">
-  <div class="gui" id="gui">
-    <img class="panel" id="panel" alt="Inventory snapshot">
-    <div id="overlays"></div>
-  </div>
-  <div class="hint">
-    Hover an item to see its tooltip · Click an item for full data · Click the inventory title for title data
-  </div>
+<div class="gui" id="gui">
+  <img class="panel" id="panel" alt="Inventory snapshot">
+  <div id="overlays"></div>
 </div>
-
-<div class="footer">
-  Exported from Minecraft <span id="f-version"></span> · <span id="f-time"></span> · mod <span id="f-mod"></span><br>
-  This file is a static, read-only snapshot. No game data is sent anywhere.
-</div>
+<div class="meta" id="meta"></div>
 
 <div class="tooltip" id="tooltip"></div>
 
@@ -252,7 +185,6 @@ pre.code.plain { color: #cfcfd8; }
   <div class="modal" role="dialog" aria-modal="true">
     <header>
       <div class="name">
-        <div class="icon" id="m-icon"></div>
         <div class="titles">
           <h2 id="m-title">—</h2>
           <div class="subtitle" id="m-sub"></div>
@@ -260,7 +192,7 @@ pre.code.plain { color: #cfcfd8; }
       </div>
       <div class="tools">
         <button class="btn primary" id="m-copy">Copy all</button>
-        <button class="btn ghost" id="m-close">Close</button>
+        <button class="btn" id="m-close">Close</button>
       </div>
     </header>
     <div class="tabs" id="m-tabs"></div>
@@ -308,13 +240,8 @@ function spansToHtml(component, defaultColor) {
 const fmtTime = (ms) => {
   try { return new Date(ms).toLocaleString(); } catch (e) { return String(ms); }
 };
-$('meta').innerHTML =
-  `<span>MC <b>${escapeHtml(DATA.minecraftVersion || '?')}</b></span>` +
-  `<span>${escapeHtml(DATA.screenClass || 'Inventory')}</span>` +
-  `<span><b>${(DATA.slots || []).filter(s => s.item).length}</b> items</span>`;
-$('f-version').textContent = DATA.minecraftVersion || '?';
-$('f-time').textContent = fmtTime(DATA.exportedAt);
-$('f-mod').textContent = 'v' + (DATA.modVersion || '?');
+$('meta').textContent =
+  (DATA.screenClass || 'Inventory') + ' · ' + fmtTime(DATA.exportedAt);
 document.title = 'MCInv to HTML — ' + ((DATA.title && DATA.title.text) || 'Inventory');
 
 /* ---------------- panel + slot overlays ---------------- */
@@ -326,11 +253,11 @@ const lb = DATA.imageHeight || 166;
 panel.src = img.png ? ('data:image/png;base64,' + img.png) : '';
 
 function layoutOverlays() {
-  // Choose an integer-ish zoom that fits the viewport, capped for readability.
-  const maxW = Math.min(980, window.innerWidth - 40);
-  const maxH = window.innerHeight - 220;
-  let zoom = Math.min(maxW / la, Math.max(2, maxH / lb));
-  if (!isFinite(zoom) || zoom <= 0) zoom = 2;
+  // Choose a zoom that fits the viewport (leaving room for the meta line).
+  const maxW = Math.max(160, window.innerWidth - 32);
+  const maxH = Math.max(120, window.innerHeight - 80);
+  let zoom = Math.min(maxW / la, maxH / lb);
+  if (!isFinite(zoom) || zoom <= 0) zoom = 1;
   zoom = Math.min(zoom, 6);
 
   const dispW = Math.round(la * zoom);
@@ -493,7 +420,6 @@ function highlightJson(text) {
 const modal = $('modal');
 const mTitle = $('m-title');
 const mSub = $('m-sub');
-const mIcon = $('m-icon');
 const mTabs = $('m-tabs');
 const mCode = $('m-code');
 let modalTabsData = [];
@@ -503,8 +429,6 @@ let modalTextForCopy = '';
 function openModal(opts) {
   mTitle.innerHTML = opts.titleHtml || escapeHtml(opts.title || '—');
   mSub.textContent = opts.subtitle || '';
-  if (opts.icon) { mIcon.style.backgroundImage = `url("${opts.icon}")`; mIcon.style.display = ''; }
-  else { mIcon.style.backgroundImage = 'none'; mIcon.style.display = 'none'; }
 
   modalTabsData = opts.tabs || [];
   mTabs.innerHTML = '';
@@ -597,7 +521,6 @@ function openItemModal(item) {
   openModal({
     titleHtml: spansToHtml(item.name, rarityDefaultColor(item.rarity)) + ` <span style="color:#6a6a7c;font-weight:400">x${item.count}</span>`,
     subtitle: item.id,
-    icon: null,
     tabs
   });
 }
