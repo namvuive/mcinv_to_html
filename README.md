@@ -7,6 +7,10 @@ browser, offline.
 Hover items to see the exact in-game tooltip, click an item to inspect its full data, or click the
 title to see its component JSON.
 
+![Exported inventory snapshot](docs/exported-inventory.jpg)
+
+![Item data modal with syntax-highlighted SNBT](docs/item-data-modal.jpg)
+
 ## Features
 
 - **"Export" button** on every container screen — chests, barrels, hoppers, furnaces, shulkers,
