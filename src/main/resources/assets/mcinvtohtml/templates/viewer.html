@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCInv to HTML — Inventory</title>
+<style>
+:root {
+  --bg: #101016;
+  --panel: #16161f;
+  --panel-2: #1b1b26;
+  --border: #2a2a3a;
+  --text: #d8d8e4;
+  --muted: #8a8a9c;
+  --accent: #4fa3ff;
+  --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background:
+    radial-gradient(1200px 600px at 50% -20%, #1c2133 0%, transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 16px 64px;
+}
+header.topbar {
+  width: 100%;
+  max-width: 980px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .3px; }
+.brand .dot { width: 10px; height: 10px; border-radius: 3px; background: linear-gradient(135deg,#6ee7b7,#4fa3ff); }
+.brand small { color: var(--muted); font-weight: 500; }
+.meta {
+  display: flex; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
+  color: var(--muted); font-size: 12px; font-family: var(--mono);
+}
+.meta b { color: var(--text); font-weight: 600; }
+
+.workspace { width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+.gui {
+  position: relative;
+  image-rendering: pixelated;
+  border-radius: 6px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04);
+  cursor: default;
+  background: #0b0b10;
+  line-height: 0;
+}
+.gui img.panel { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.slot {
+  position: absolute;
+  border-radius: 2px;
+  cursor: pointer;
+  background: rgba(255,255,255,0);
+  transition: background .08s ease, box-shadow .08s ease;
+}
+.slot:hover { background: rgba(255,255,255,.28); box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
+.slot.empty { cursor: default; }
+.slot.empty:hover { background: transparent; box-shadow: none; }
+
+.title-hit { position: absolute; cursor: pointer; border-radius: 2px; }
+.title-hit:hover { background: rgba(79,163,255,.22); box-shadow: inset 0 0 0 1px rgba(79,163,255,.5); }
+
+.hint { color: var(--muted); font-size: 13px; text-align: center; line-height: 1.6; }
+.hint kbd {
+  font-family: var(--mono); font-size: 11px; background: var(--panel-2);
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  background: rgba(16,0,20,.94);
+  border: 2px solid #2b0f45;
+  border-radius: 3px;
+  padding: 4px 6px;
+  max-width: 360px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.35;
+  display: none;
+  box-shadow: 0 8px 28px rgba(0,0,0,.6);
+  image-rendering: pixelated;
+}
+.tooltip .line { white-space: pre-wrap; word-break: break-word; min-height: 1.35em; }
+.tooltip .line .bold { font-weight: 700; }
+.tooltip .line .italic { font-style: italic; }
+.tooltip .line .underlined { text-decoration: underline; }
+.tooltip .line .strikethrough { text-decoration: line-through; }
+.tooltip .line .both { text-decoration: underline line-through; }
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(4,4,8,.72);
+  backdrop-filter: blur(3px);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 20px;
+  overflow: auto;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  width: min(880px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  overflow: hidden;
+  animation: pop .14s ease-out;
+}
+@keyframes pop { from { transform: translateY(8px) scale(.99); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, #1e1e2b, #191924);
+  border-bottom: 1px solid var(--border);
+}
+.modal header .name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.modal header .icon {
+  width: 32px; height: 32px; border-radius: 6px; flex: 0 0 auto;
+  background: #0d0d14 center/contain no-repeat; border: 1px solid #30304a;
+  image-rendering: pixelated;
+}
+.modal header .titles { min-width: 0; }
+.modal header h2 {
+  margin: 0; font-size: 15px; font-weight: 650; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.modal header .subtitle {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.modal .tools { display: flex; gap: 8px; flex: 0 0 auto; }
+.btn {
+  font: inherit; font-size: 12px; font-weight: 600;
+  padding: 7px 12px; border-radius: 7px; cursor: pointer;
+  background: #262636; color: var(--text); border: 1px solid #34344a;
+  transition: background .12s, border-color .12s, transform .06s;
+  white-space: nowrap;
+}
+.btn:hover { background: #30304a; border-color: #45456a; }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: #1d3a5c; border-color: #2f5d8f; color: #cfe6ff; }
+.btn.primary:hover { background: #24496f; }
+.btn.ghost { background: transparent; }
+.modal .tabs { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--panel); }
+.tab {
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  padding: 6px 12px; border-radius: 7px 7px 0 0; color: var(--muted);
+  background: transparent; border: 1px solid transparent; border-bottom: none;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: #fff; background: var(--panel-2); border-color: var(--border); }
+.code-wrap { position: relative; }
+pre.code {
+  margin: 0;
+  padding: 16px 18px 22px;
+  background: #12121a;
+  border-top: 1px solid var(--border);
+  color: #d4d4dc;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow: auto;
+  max-height: min(62vh, 640px);
+  tab-size: 4;
+  user-select: text;
+  white-space: pre;
+}
+pre.code::selection, pre.code *::selection { background: #264f78; }
+/* VS Code Dark+ style token colors */
+.tok-key { color: #9cdcfe; }
+.tok-string { color: #ce9178; }
+.tok-number { color: #b5cea8; }
+.tok-bool { color: #569cd6; }
+.tok-null { color: #c586c0; }
+.tok-punct { color: #808080; }
+.tok-type { color: #4ec9b0; }
+.tok-comment { color: #6a9955; }
+.tok-sect { color: #c586c0; font-weight: 600; }
+.tok-value { color: #dcdcaa; }
+
+.footer { margin-top: 26px; color: var(--muted); font-size: 12px; font-family: var(--mono); text-align: center; line-height: 1.7; }
+.footer a { color: var(--accent); text-decoration: none; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 16px);
+  background: #1d3a2c; color: #b8f5d0; border: 1px solid #2f6b4c;
+  padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; z-index: 300;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 640px) {
+  body { padding: 16px 8px 48px; }
+  .meta { font-size: 11px; }
+  .modal-backdrop { padding: 16px 8px; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <span>MCInv to HTML <small>— read-only snapshot</small></span>
+  </div>
+  <div class="meta" id="meta"></div>
+</header>
+
+<div class="workspace">
+  <div class="gui" id="gui">
+    <img class="panel" id="panel" alt="Inventory snapshot">
+    <div id="overlays"></div>
+  </div>
+  <div class="hint">
+    Hover an item to see its tooltip · Click an item for full data · Click the inventory title for title data
+  </div>
+</div>
+
+<div class="footer">
+  Exported from Minecraft <span id="f-version"></span> · <span id="f-time"></span> · mod <span id="f-mod"></span><br>
+  This file is a static, read-only snapshot. No game data is sent anywhere.
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal" role="dialog" aria-modal="true">
+    <header>
+      <div class="name">
+        <div class="icon" id="m-icon"></div>
+        <div class="titles">
+          <h2 id="m-title">—</h2>
+          <div class="subtitle" id="m-sub"></div>
+        </div>
+      </div>
+      <div class="tools">
+        <button class="btn primary" id="m-copy">Copy all</button>
+        <button class="btn ghost" id="m-close">Close</button>
+      </div>
+    </header>
+    <div class="tabs" id="m-tabs"></div>
+    <div class="code-wrap">
+      <pre class="code" id="m-code"></pre>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+"use strict";
+const DATA = __MCINV_DATA__;
+
+/* ---------------- helpers ---------------- */
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* Render styled spans of a component into HTML, with MC default color fallback. */
+function spansToHtml(component, defaultColor) {
+  if (!component) return '';
+  const spans = component.spans && component.spans.length ? component.spans : [{ text: component.text || '' }];
+  let out = '';
+  for (const span of spans) {
+    const parts = [];
+    const color = span.color || defaultColor || '#ffffff';
+    if (span.bold) parts.push('bold');
+    if (span.italic) parts.push('italic');
+    if (span.underlined && span.strikethrough) parts.push('both');
+    else if (span.underlined) parts.push('underlined');
+    else if (span.strikethrough) parts.push('strikethrough');
+    const cls = parts.length ? ` class="${parts.join(' ')}"` : '';
+    const text = span.obfuscated ? (span.text || '').replace(/[^\s]/g, u => '▓') : span.text;
+    out += `<span${cls} style="color:${escapeHtml(color)}">${escapeHtml(text)}</span>`;
+  }
+  return out;
+}
+
+/* ---------------- meta ---------------- */
+const fmtTime = (ms) => {
+  try { return new Date(ms).toLocaleString(); } catch (e) { return String(ms); }
+};
+$('meta').innerHTML =
+  `<span>MC <b>${escapeHtml(DATA.minecraftVersion || '?')}</b></span>` +
+  `<span>${escapeHtml(DATA.screenClass || 'Inventory')}</span>` +
+  `<span><b>${(DATA.slots || []).filter(s => s.item).length}</b> items</span>`;
+$('f-version').textContent = DATA.minecraftVersion || '?';
+$('f-time').textContent = fmtTime(DATA.exportedAt);
+$('f-mod').textContent = 'v' + (DATA.modVersion || '?');
+document.title = 'MCInv to HTML — ' + ((DATA.title && DATA.title.text) || 'Inventory');
+
+/* ---------------- panel + slot overlays ---------------- */
+const gui = $('gui');
+const panel = $('panel');
+const img = DATA.image || {};
+const la = DATA.imageWidth || 176;
+const lb = DATA.imageHeight || 166;
+panel.src = img.png ? ('data:image/png;base64,' + img.png) : '';
+
+function layoutOverlays() {
+  // Choose an integer-ish zoom that fits the viewport, capped for readability.
+  const maxW = Math.min(980, window.innerWidth - 40);
+  const maxH = window.innerHeight - 220;
+  let zoom = Math.min(maxW / la, Math.max(2, maxH / lb));
+  if (!isFinite(zoom) || zoom <= 0) zoom = 2;
+  zoom = Math.min(zoom, 6);
+
+  const dispW = Math.round(la * zoom);
+  const dispH = Math.round(lb * zoom);
+  gui.style.width = dispW + 'px';
+  gui.style.height = dispH + 'px';
+
+  const scaleX = dispW / la;
+  const scaleY = dispH / lb;
+
+  const overlays = $('overlays');
+  overlays.innerHTML = '';
+  overlays.style.position = 'absolute';
+  overlays.style.inset = '0';
+
+  for (const slot of (DATA.slots || [])) {
+    const node = el('div', 'slot' + (slot.item ? '' : ' empty'));
+    node.style.left = (slot.x * scaleX) + 'px';
+    node.style.top = (slot.y * scaleY) + 'px';
+    node.style.width = (16 * scaleX) + 'px';
+    node.style.height = (16 * scaleY) + 'px';
+    if (slot.item) {
+      node.addEventListener('mouseenter', (e) => showTooltip(slot.item, e));
+      node.addEventListener('mousemove', (e) => moveTooltip(e));
+      node.addEventListener('mouseleave', hideTooltip);
+      node.addEventListener('click', () => openItemModal(slot.item));
+    }
+    overlays.appendChild(node);
+  }
+
+  // Title hit area (covers the title text position).
+  const titleText = (DATA.title && DATA.title.text) || '';
+  const titleW = Math.max(60, titleText.length * 6);
+  const titleHit = el('div', 'title-hit');
+  titleHit.style.left = ((DATA.titleLabelX || 8) * scaleX) + 'px';
+  titleHit.style.top = ((DATA.titleLabelY || 6) * scaleY) + 'px';
+  titleHit.style.width = (titleW * scaleX) + 'px';
+  titleHit.style.height = (10 * scaleY) + 'px';
+  titleHit.title = 'Click to view title data';
+  titleHit.addEventListener('click', () => openTitleModal());
+  overlays.appendChild(titleHit);
+}
+
+panel.addEventListener('load', layoutOverlays);
+panel.addEventListener('error', () => { $('gui').style.display = 'none'; });
+window.addEventListener('resize', () => { layoutOverlays(); hideTooltip(); });
+if (panel.complete && panel.naturalWidth > 0) {
+  layoutOverlays();
+}
+
+/* ---------------- tooltip ---------------- */
+const tooltip = $('tooltip');
+let currentTooltipItem = null;
+
+function rarityDefaultColor(rarity) {
+  switch (rarity) {
+    case 'UNCOMMON': return '#ffff55';
+    case 'RARE': return '#55ffff';
+    case 'EPIC': return '#ff55ff';
+    default: return '#ffffff';
+  }
+}
+
+function showTooltip(item, evt) {
+  currentTooltipItem = item;
+  tooltip.innerHTML = '';
+  const lines = item.tooltip || [];
+  if (!lines.length) { hideTooltip(); return; }
+  lines.forEach((line, i) => {
+    const div = el('div', 'line');
+    const color = i === 0 ? rarityDefaultColor(item.rarity) : '#aaaaaa';
+    div.innerHTML = spansToHtml(line, color);
+    if (!line.text) div.innerHTML = '&nbsp;';
+    tooltip.appendChild(div);
+  });
+  tooltip.style.display = 'block';
+  moveTooltip(evt);
+}
+
+function moveTooltip(evt) {
+  if (!tooltip.style.display || tooltip.style.display === 'none') return;
+  const pad = 14;
+  let x = evt.clientX + pad;
+  let y = evt.clientY + pad;
+  const r = tooltip.getBoundingClientRect();
+  if (x + r.width > window.innerWidth - 8) x = evt.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight - 8) y = evt.clientY - r.height - pad;
+  tooltip.style.left = Math.max(6, x) + 'px';
+  tooltip.style.top = Math.max(6, y) + 'px';
+}
+
+function hideTooltip() { tooltip.style.display = 'none'; currentTooltipItem = null; }
+
+/* ---------------- syntax highlighting ---------------- */
+/* Highlights SNBT-like text: keys, strings, numbers, booleans, punctuation. */
+function highlightSnbt(text) {
+  let out = '';
+  let i = 0;
+  const n = text.length;
+  const isIdentStart = (c) => /[A-Za-z0-9_.+\-]/.test(c);
+  const isIdent = (c) => /[A-Za-z0-9_.+\-]/.test(c);
+
+  while (i < n) {
+    const c = text[i];
+
+    // comments
+    if (c === '#') {
+      let j = text.indexOf('\n', i);
+      if (j === -1) j = n;
+      out += `<span class="tok-comment">${escapeHtml(text.slice(i, j))}</span>`;
+      i = j;
+      continue;
+    }
+
+    // quoted string
+    if (c === '"' || c === "'") {
+      const quote = c;
+      let j = i + 1;
+      while (j < n) {
+        if (text[j] === '\\') { j += 2; continue; }
+        if (text[j] === quote) { j++; break; }
+        j++;
+      }
+      const raw = text.slice(i, j);
+      // Determine if this string is actually a key (followed by ':')
+      let k = j;
+      while (k < n && (text[k] === ' ' || text[k] === '\t')) k++;
+      const isKey = text[k] === ':' && text[k + 1] !== ':';
+      out += `<span class="${isKey ? 'tok-key' : 'tok-string'}">${escapeHtml(raw)}</span>`;
+      i = j;
+      continue;
+    }
+
+    // type prefixes like byte[...] / int[...] / long[...]
+    if (/[A-Za-z]/.test(c)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_]/.test(text[j])) j++;
+      let word = text.slice(i, j);
+      // typed array header:  byte[4] { ... }
+      if (text[j] === '[' || /^(byte|short|int|long|float|double)$/.test(word) && text[j] === '[') {
+        let k = j;
+        // consume [ ... ]
+        let depth = 0;
+        let kk = k;
+        if (text[kk] === '[') {
+          while (kk < n) {
+            if (text[kk] === '[') depth++;
+            else if (text[kk] === ']') { depth--; kk++; if (depth === 0) break; }
+            else kk++;
+          }
+        }
+        // typed array head
+        if (/^(byte|short|int|long|float|double|List|Compound|String|ByteArray|IntArray|LongArray)$/.test(word) && text[k] === '[') {
+          out += `<span class="tok-type">${escapeHtml(word)}</span><span class="tok-punct">${escapeHtml(text.slice(k, kk))}</span>`;
+          i = kk;
+          continue;
+        }
+      }
+      // positional index prefix like "0: " from pretty print? handle later
+      let realWord = text.slice(i, j);
+      if (/^\d+[bBsSlLfFdD]$/.test(realWord)) {
+        out += `<span class="tok-number">${escapeHtml(realWord)}</span>`;
+      } else if (/^(true|false)$/.test(realWord)) {
+        out += `<span class="tok-bool">${escapeHtml(realWord)}</span>`;
+      } else if (/^(null)$/i.test(realWord)) {
+        out += `<span class="tok-null">${escapeHtml(realWord)}</span>`;
+      } else if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(realWord)) {
+        out += `<span class="tok-number">${escapeHtml(realWord)}</span>`;
+      } else {
+        // bare identifier: could be a key if followed by ':'
+        let k = j;
+        while (k < n && (text[k] === ' ' || text[k] === '\t')) k++;
+        if (text[k] === ':' && text[k + 1] !== ':') {
+          out += `<span class="tok-key">${escapeHtml(realWord)}</span>`;
+        } else {
+          out += `<span class="tok-value">${escapeHtml(realWord)}</span>`;
+        }
+      }
+      i = j;
+      continue;
+    }
+
+    // number
+    if (/[0-9\-+.]/.test(c)) {
+      let j = i;
+      if (text[j] === '-' || text[j] === '+') j++;
+      while (j < n && /[0-9.eE+\-bBsSlLfFdD]/.test(text[j])) {
+        // allow only numbers/suffixes
+        j++;
+        if (/[bBsSlLfFdD]$/.test(text.slice(i, j))) break;
+      }
+      const raw = text.slice(i, j);
+      if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?[bBsSlLfFdD]?$/.test(raw)) {
+        out += `<span class="tok-number">${escapeHtml(raw)}</span>`;
+        i = j;
+        continue;
+      }
+      // fallthrough single char
+      out += escapeHtml(c);
+      i++;
+      continue;
+    }
+
+    // punctuation / structural
+    if ('{}[],:='.includes(c)) {
+      out += `<span class="tok-punct">${escapeHtml(c)}</span>`;
+      i++;
+      continue;
+    }
+
+    out += escapeHtml(c);
+    i++;
+  }
+  return out;
+}
+
+/* Highlights JSON-ish pretty text for the title serialized view. */
+function highlightJson(text) {
+  return highlightSnbt(text);
+}
+
+/* ---------------- modal ---------------- */
+const modal = $('modal');
+const mTitle = $('m-title');
+const mSub = $('m-sub');
+const mIcon = $('m-icon');
+const mTabs = $('m-tabs');
+const mCode = $('m-code');
+let modalTabsData = [];
+let modalActive = 0;
+let modalTextForCopy = '';
+
+function openModal(opts) {
+  mTitle.innerHTML = opts.titleHtml || escapeHtml(opts.title || '—');
+  mSub.textContent = opts.subtitle || '';
+  if (opts.icon) { mIcon.style.backgroundImage = `url("${opts.icon}")`; mIcon.style.display = ''; }
+  else { mIcon.style.backgroundImage = 'none'; mIcon.style.display = 'none'; }
+
+  modalTabsData = opts.tabs || [];
+  mTabs.innerHTML = '';
+  modalTabsData.forEach((tab, idx) => {
+    const b = el('button', 'tab' + (idx === modalActive ? ' active' : ''));
+    b.textContent = tab.label;
+    b.addEventListener('click', () => { modalActive = idx; renderModalTab(); });
+    mTabs.appendChild(b);
+  });
+  modalActive = 0;
+  renderModalTab();
+  modal.classList.add('open');
+}
+
+function renderModalTab() {
+  const tab = modalTabsData[modalActive];
+  if (!tab) return;
+  const h = tab.kind === 'json' ? highlightJson(tab.text) : highlightSnbt(tab.text);
+  mCode.innerHTML = h;
+  modalTextForCopy = tab.text;
+  [...mTabs.children].forEach((n, i) => n.classList.toggle('active', i === modalActive));
+}
+
+function closeModal() { modal.classList.remove('open'); hideTooltip(); }
+$('m-close').addEventListener('click', closeModal);
+modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+
+/* Copy all + toast */
+const toast = $('toast');
+let toastTimer = null;
+function showToast(msg) {
+  toast.textContent = msg || 'Copied!';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+}
+
+$('m-copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(modalTextForCopy);
+    showToast('Copied all');
+  } catch (e) {
+    // fallback for file:// without clipboard permission
+    const ta = document.createElement('textarea');
+    ta.value = modalTextForCopy;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('Copied all'); }
+    catch (err) { showToast('Copy failed — select manually'); }
+    document.body.removeChild(ta);
+  }
+});
+
+/* Ctrl/Cmd+C when text selected inside code: let browser handle natively */
+
+/* ---------------- item modal ---------------- */
+function openItemModal(item) {
+  const tooltipText = (item.tooltip || []).map(l => l.text).join('\n');
+  const tabs = [
+    { label: 'Item data (SNBT)', kind: 'snbt', text: item.componentsSnbt || '{}' },
+    { label: 'Components (JSON)', kind: 'json', text: JSON.stringify(item.components || {}, null, 2) },
+    { label: 'Tooltip text', kind: 'snbt', text: tooltipText }
+  ];
+  openModal({
+    titleHtml: spansToHtml(item.name, rarityDefaultColor(item.rarity)) + ` <span style="color:#6a6a7c;font-weight:400">x${item.count}</span>`,
+    subtitle: item.id,
+    icon: null,
+    tabs
+  });
+}
+
+/* ---------------- title modal ---------------- */
+function openTitleModal() {
+  const t = DATA.title || {};
+  const inv = DATA.inventoryTitle || {};
+  const tabs = [
+    { label: 'Title (JSON)', kind: 'json', text: t.serializedPretty || JSON.stringify(t.serialized || {}, null, 2) },
+    { label: 'Title (plain)', kind: 'snbt', text: t.text || '' },
+    { label: 'Player inventory title (JSON)', kind: 'json', text: inv.serializedPretty || JSON.stringify(inv.serialized || {}, null, 2) },
+    { label: 'Inventory meta (JSON)', kind: 'json', text: JSON.stringify({
+      screenClass: DATA.screenClass,
+      imageWidth: DATA.imageWidth,
+      imageHeight: DATA.imageHeight,
+      titleLabelX: DATA.titleLabelX,
+      titleLabelY: DATA.titleLabelY,
+      inventoryLabelX: DATA.inventoryLabelX,
+      inventoryLabelY: DATA.inventoryLabelY,
+      minecraftVersion: DATA.minecraftVersion,
+      modVersion: DATA.modVersion,
+      exportedAt: new Date(DATA.exportedAt).toISOString()
+    }, null, 2) }
+  ];
+  openModal({
+    titleHtml: spansToHtml(t, '#ffffff'),
+    subtitle: 'Inventory title — click any tab, then Copy all',
+    tabs
+  });
+}
+
+/* ---------------- boot ---------------- */
+if (!img.png) {
+  $('gui').style.display = 'none';
+  $('panel').alt = 'No panel image captured';
+}
+</script>
+</body>
+</html>

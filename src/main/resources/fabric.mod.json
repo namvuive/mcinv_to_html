@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "mcinvtohtml",
+	"version": "${version}",
+	"name": "MCInv to HTML",
+	"description": "Exports any container inventory to a self-contained, read-only HTML file with items, tooltips and full item data.",
+	"authors": [
+		"Nam Vuive"
+	],
+	"license": "MIT",
+	"icon": "assets/mcinvtohtml/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.namvuive.mcinvtohtml.MCInvToHtmlClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "mcinvtohtml.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
